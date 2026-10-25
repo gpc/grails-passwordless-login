@@ -10,7 +10,7 @@ the session holds. These are Spring beans, declared by name, either as Grails se
 | Bean name | Type and purpose | Required
 
 | `loginAccountLookup` | `LoginAccountLookup`: finds a user by email and by id. | yes
-| `loginLinkSender` | `LoginLinkSender`: delivers a link by mail, SMS or whatever the application uses. | yes
+| `loginLinkSender` | `LoginLinkSender`: delivers a link by mail, SMS or whatever the application uses (see <<mail>>). | yes
 | `loginPrincipalFactory` | `LoginPrincipalFactory`: builds the session principal, a `LoginPrincipal`. | yes
 | `sessionPolicy` | `SessionPolicy`: idle timeout per principal. Default is `passwordless.session.idle` for everyone. | no
 | `loginSuccessRedirect` | `LoginSuccessRedirect`: where a user goes after a magic link. Default is `passwordless.login.successUrl`. | no
@@ -67,17 +67,11 @@ string the application attached when login started (see <<context>>).
 
 [source,groovy]
 ----
-class MailLinkSender implements LoginLinkSender {
-
-    MailService mailService
+class MyLinkSender implements LoginLinkSender {
 
     @Override
     void send(LoginAccount account, URI link, Duration validFor, String context) {
-        mailService.sendMail {
-            to account.email
-            subject 'Your login link'
-            text "Open ${link} to log in. It works once and expires in ${validFor.toMinutes()} minutes."
-        }
+        // deliver `link` to `account.email`; see <<mail>> for a mail implementation
     }
 }
 ----

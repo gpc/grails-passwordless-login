@@ -1,0 +1,134 @@
+[[mail]]
+=== Sending the link
+
+The plugin does not send mail. It has no mail dependency and no mail configuration. It builds the link and hands it to
+the application's `loginLinkSender` bean (<<loginLinkSender>>), which delivers it by whatever means the application
+has: SMTP, a transactional mail service's API, SMS. This section shows one way to do it with Spring Boot's mail
+support.
+
+==== With Spring Boot's JavaMailSender
+
+Add the starter:
+
+[source,groovy]
+----
+implementation 'org.springframework.boot:spring-boot-starter-mail'
+----
+
+Configure the SMTP server with Spring Boot's own properties:
+
+[source,yaml]
+----
+spring:
+  mail:
+    host: smtp.example.com
+    port: 587
+    username: login@example.com
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+----
+
+Then implement the sender:
+
+[source,groovy]
+----
+import grails.plugins.passwordless.LoginAccount
+import grails.plugins.passwordless.LoginLinkSender
+import org.springframework.mail.SimpleMailMessage
+import org.springframework.mail.javamail.JavaMailSender
+
+import java.time.Duration
+
+class MailLinkSender implements LoginLinkSender {
+
+    JavaMailSender mailSender
+
+    @Override
+    void send(LoginAccount account, URI link, Duration validFor, String context) {
+        SimpleMailMessage message = new SimpleMailMessage()
+        message.from = 'Example <login@example.com>'
+        message.to = account.email
+        message.subject = 'Your login link'
+        message.text = """\
+            Hi ${account.displayName},
+
+            Open this link to log in:
+            ${link}
+
+            It works once and expires in ${validFor.toMinutes()} minutes. If you did not ask for it, ignore this mail.
+            """.stripIndent()
+        mailSender.send(message)
+    }
+}
+----
+
+Declare it as `loginLinkSender`:
+
+[source,groovy]
+----
+// grails-app/conf/spring/resources.groovy
+beans = {
+    loginLinkSender(MailLinkSender) {
+        mailSender = ref('mailSender')
+    }
+}
+----
+
+An application that already uses the Grails Mail plugin, or an HTML mail template, does the same from `send`:
+whatever sends a message from ordinary code works here.
+
+==== What the sender gets
+
+* `account`: the `LoginAccount` the lookup returned. `account.email` is the address to send to.
+* `link`: a complete, absolute `URI`, built from `grails.serverURL` (<<serverUrl>>). Put it in the mail as it is.
+  Its last path segment is the token. Do not log it, and do not store it: whoever holds it can sign in until it is used
+  or expires.
+* `validFor`: how long the link works, `passwordless.login.tokenValidity`.
+* `context`: the optional value the application attached when login started (<<context>>), or `null`.
+
+==== How it runs
+
+* *On a background thread.* With `passwordless.async: true`, the default, the answer to the user is sent before the
+  mail is. This is what keeps the response time the same for an address that has no account. The plugin's executor has
+  one to two threads and a queue of 200 requests.
+* *With no request.* There is no session, no `request` and no current locale. If the mail is in the user's language,
+  take the language from the user, not from the request, and format with a `MessageSource` and that `Locale`.
+* *Inside a transaction.* The token is saved and the sender is called in one transaction. If `send` throws, the
+  token is rolled back and the failure is logged, and the user, who was already told "check your email", receives
+  nothing and can ask again. Throw for a failure the user can fix by trying again. Do not retry for a long time inside
+  `send`, which would hold a transaction and one of the two threads.
+* *Without telling the user.* An exception never reaches the person who asked. Watch the application log for
+  `Could not issue a login link`.
+* *In tests.* In the `test` environment, or with `passwordless.async: false`, the executor runs the sender on the
+  calling thread, so a test can ask for a link and read the result at once. A sender that keeps what it is given in a
+  list, as the sample's `LinkInbox` does, makes an integration test able to take the token from the link and redeem it.
+
+==== Deliverability
+
+The mail is a login credential, so it matters that it arrives:
+
+* Send from a domain with SPF, DKIM and DMARC set up.
+* Keep the mail short, in plain text, with the link on its own line. Some mail clients and scanners open links;
+  this is why opening the link only shows a confirmation page and a button (<<signIn>>).
+
+==== During development
+
+Run a local SMTP catcher such as MailHog or Mailpit and point `spring.mail.host` at it in the `development`
+environment, or use a sender that writes the link to the log:
+
+[source,groovy]
+----
+class LogLinkSender implements LoginLinkSender {
+
+    private static final Logger log = LoggerFactory.getLogger(LogLinkSender)
+
+    @Override
+    void send(LoginAccount account, URI link, Duration validFor, String context) {
+        log.info('Login link for {}: {}', account.email, link)
+    }
+}
+----
+
+Use it only in development: a link in a log is a login for anyone who can read the log.
