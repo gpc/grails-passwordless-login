@@ -1,0 +1,11 @@
+[[introduction]]
+== Introduction
+
+The Grails Passwordless Login plugin signs users in with a magic link or a passkey (WebAuthn), on plain Spring
+Security 7. It is not built on `grails-spring-security-core`, which assumes a password User/Role model.
+
+The plugin owns the sign-in mechanics: single-use hashed login tokens, a confirmation page that keeps mail scanners
+from spending a link, rate limiting, passkey registration and sign-in, session establishment and a login form.
+The application supplies who the user is, how a link reaches them and what the session principal holds.
+
+include::introduction/license.adoc[]

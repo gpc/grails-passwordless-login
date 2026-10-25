@@ -1,0 +1,21 @@
+passwordless:
+  # Shown on the login pages and as the passkey relying party's name.
+  app-name: Login
+  # Handle requests for a link on a background thread, so the response time does not reveal whether an address
+  # is known. Tests turn it off to assert on the outcome.
+  async: true
+  login:
+    tokenValidity: PT15M
+    successUrl: /
+    rateLimit:
+      window: PT1H
+      perAccount: 5
+      perAddress: 20
+  session:
+    idle: P14D
+  passkeys:
+    # Empty: the host and origin of grails.serverURL. Set only if browsers reach the application by another name.
+    rp-id:
+    allowed-origins:
+    # Where /account/passkeys/confirm sends a session that has confirmed a passkey.
+    confirmedUrl: /

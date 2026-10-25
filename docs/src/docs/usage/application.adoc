@@ -1,0 +1,125 @@
+[[application]]
+=== What the application supplies
+
+The plugin owns the sign-in mechanics. The application supplies who the users are, how a link reaches them, and what
+the session holds. These are Spring beans, declared by name, either as Grails services (a service named
+`sampleUserLookupService` is a bean of that name) or in `grails-app/conf/spring/resources.groovy`.
+
+[cols="2,3,1"]
+|===
+| Bean name | Type and purpose | Required
+
+| `loginAccountLookup` | `LoginAccountLookup`: finds a user by email and by id. | yes
+| `loginLinkSender` | `LoginLinkSender`: delivers a link by mail, SMS or whatever the application uses. | yes
+| `loginPrincipalFactory` | `LoginPrincipalFactory`: builds the session principal, a `LoginPrincipal`. | yes
+| `sessionPolicy` | `SessionPolicy`: idle timeout per principal. Default is `passwordless.session.idle` for everyone. | no
+| `loginSuccessRedirect` | `LoginSuccessRedirect`: where a user goes after a magic link. Default is `passwordless.login.successUrl`. | no
+|===
+
+A service whose class name matches the bean name needs no further wiring. Otherwise alias it:
+
+[source,groovy]
+----
+// grails-app/conf/spring/resources.groovy
+beans = {
+    springConfig.addAlias('loginAccountLookup', 'userLookupService')
+    springConfig.addAlias('loginPrincipalFactory', 'principalService')
+    springConfig.addAlias('loginLinkSender', 'mailLinkSender')
+}
+----
+
+[[loginAccountLookup]]
+==== LoginAccountLookup
+
+Tells the plugin who can sign in. Return `null` for an unknown address, and for a user who must not sign in, such as a
+disabled one: the plugin treats both the same, and answers a request for a link identically either way.
+
+[source,groovy]
+----
+@Transactional(readOnly = true)
+class UserLookupService implements LoginAccountLookup {
+
+    @Override
+    LoginAccount findByEmail(String email) {   // already trimmed and lowercased
+        account(User.findByEmailAndEnabled(email, true))
+    }
+
+    @Override
+    LoginAccount findById(String id) {
+        account(id?.isLong() ? User.findByIdAndEnabled(id.toLong(), true) : null)
+    }
+
+    private static LoginAccount account(User user) {
+        user == null ? null : new LoginAccount(user.id.toString(), user.email, user.displayName)
+    }
+}
+----
+
+A `LoginAccount` holds only what the plugin needs: a stable `id` (a string, so any id type works), the lowercase
+`email`, which is the sign-in name and where links go, and a `displayName` that authenticators show next to a passkey.
+The lookup is called outside any transaction the plugin opens, so use your own, as above.
+
+[[loginLinkSender]]
+==== LoginLinkSender
+
+Delivers the link. It receives the account, the complete `URI`, how long the link is valid and the optional `context`
+string the application attached when login started (see <<context>>).
+
+[source,groovy]
+----
+class MailLinkSender implements LoginLinkSender {
+
+    MailService mailService
+
+    @Override
+    void send(LoginAccount account, URI link, Duration validFor, String context) {
+        mailService.sendMail {
+            to account.email
+            subject 'Your login link'
+            text "Open ${link} to log in. It works once and expires in ${validFor.toMinutes()} minutes."
+        }
+    }
+}
+----
+
+By default (`passwordless.async: true`) the sender runs on a background thread, so the response to a request for a link
+takes the same time whether or not the address is known. It therefore has no request, session or locale to use.
+Exceptions are logged and do not reach the user.
+
+[[loginPrincipalFactory]]
+==== LoginPrincipalFactory and LoginPrincipal
+
+Called once someone has proved who they are, by link or passkey. It builds the object that lives in the session and
+that `SecurityContextHolder` returns. A `LoginPrincipal` needs an `email`, a `passkeyVerified` flag and its
+authorities, and may carry anything else: roles, memberships, a tenant.
+
+[source,groovy]
+----
+final class MyPrincipal implements LoginPrincipal {
+    final Long userId
+    final String email
+    final String displayName
+    final boolean admin
+    final boolean passkeyVerified
+    // constructor ...
+
+    @Override
+    Collection<? extends GrantedAuthority> getAuthorities() {
+        [new SimpleGrantedAuthority(admin ? 'ROLE_ADMIN' : 'ROLE_USER')]
+    }
+}
+
+@Transactional(readOnly = true)
+class PrincipalService implements LoginPrincipalFactory {
+
+    @Override
+    LoginPrincipal principalFor(LoginAccount account, boolean passkeyVerified) {
+        User user = User.get(account.id.toLong())
+        new MyPrincipal(user.id, user.email, user.displayName, user.admin, passkeyVerified)
+    }
+}
+----
+
+The principal is serialized into the HTTP session, so keep it serializable and free of domain objects, which would be
+detached and stale. Hold ids and values and look the rest up when needed. Because it is a snapshot, a role change takes
+effect at the next sign-in.

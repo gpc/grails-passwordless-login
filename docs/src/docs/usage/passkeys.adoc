@@ -1,0 +1,87 @@
+[[passkeys]]
+=== Passkeys
+
+A user who has a passkey can sign in with it from the login form, without waiting for an email. Registering and
+signing in happen in the browser against Spring Security's WebAuthn endpoints (`/webauthn/*`, `/login/webauthn`). The
+plugin adds the pages and the rules around them.
+
+[cols="2,3"]
+|===
+| `GET /account/passkeys` | The signed-in user's passkeys: list, add, remove.
+| `POST /account/passkeys/delete` | Removes one of the user's own passkeys.
+| `GET /account/passkeys/confirm` | Asks the user to confirm a passkey, or add the first one.
+| `GET /passwordless/passkeys.js` | The script behind the buttons. Served from the plugin's jar, so there is no asset to set up.
+|===
+
+Link to `/account/passkeys` from the application, for example from a user menu.
+
+==== The relying party
+
+WebAuthn ties a passkey to a host name. By default the plugin uses the host and origin of `grails.serverURL`
+(<<serverUrl>>), and `passwordless.app-name` (or `passwordless.passkeys.rp-name`) as the name shown in the browser's
+dialog. Browsers must reach the application at that name: a passkey made at `https://example.com` does not work at
+another host, and changing the host later orphans every passkey. Browsers allow passkeys on `localhost` over plain HTTP,
+and nowhere else.
+
+==== Who may add or remove a passkey
+
+A session from a hijacked mailbox must not be able to add its own passkey to an account that already has one. So:
+
+* A user *without* a passkey may add their first.
+* A user *with* one may add or remove passkeys only in a session that has confirmed one, that is, whose principal has
+  `passkeyVerified == true`. A passkey sign-in sets it. A magic link sign-in does not.
+
+A user who signed in with a link and wants to add or remove a passkey is sent to `/account/passkeys/confirm`, which asks
+for an existing passkey. Afterwards they go to the page they were heading for (see below), or to
+`passwordless.login.successUrl`. A session that has already confirmed a passkey and opens the page is sent on to
+`passwordless.passkeys.confirmedUrl`.
+
+The rule is enforced on the registration endpoints in the chain, not only in the pages.
+
+==== Asking for a confirmed passkey
+
+An application can demand a passkey for a sensitive page: check `passkeyVerified` and send the user to confirm one,
+remembering where they were going.
+
+[source,groovy]
+----
+def admin() {
+    MyPrincipal principal = (MyPrincipal) SecurityContextHolder.context.authentication.principal
+    if (!principal.passkeyVerified) {
+        session.setAttribute(PasskeySignInHandler.RETURN_TO, '/admin')
+        redirect controller: 'passkey', action: 'confirm', method: 'GET', absolute: false
+        return
+    }
+    // ...
+}
+----
+
+After the passkey is confirmed the user is sent to the saved path, which must be a path on the application,
+otherwise to `passwordless.login.successUrl`. A confirmation signs in again, through `loginPrincipalFactory` with `passkeyVerified = true`.
+
+==== Telling the user
+
+When a passkey is added, the plugin publishes a Spring `PasskeyRegisteredEvent` carrying the user id and the label.
+Listen to it to send a "a passkey was added to your account" mail, to the user and to whoever else should know:
+
+[source,groovy]
+----
+class PasskeyNotifier {
+
+    @EventListener
+    void onRegistered(PasskeyRegisteredEvent event) {
+        // look up the user from event.userId, send a mail
+    }
+}
+
+// resources.groovy
+beans = {
+    passkeyNotifier(PasskeyNotifier)
+}
+----
+
+==== Requirements
+
+Passkeys need a secure context: HTTPS, or `localhost`. The login form still works for links when passkeys cannot.
+The plugin declares exactly one `UserCredentialRepository` bean, `userCredentialRepository`. Do not declare another:
+with two, Spring Security's WebAuthn configuration ignores both.

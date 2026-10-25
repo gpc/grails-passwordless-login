@@ -1,0 +1,23 @@
+[[customizing]]
+=== Customizing the pages
+
+The plugin ships the login pages (`login/form`, `login/sent`, `login/confirm`, `login/tooMany`) and the passkey
+pages (`passkey/manage`, `passkey/confirm`) as GSPs that use `layout="main"`. Two ways to change them:
+
+* *Layout.* The pages are decorated by the application's `main` layout, so they take on its look. The sample layout and
+  the plugin's markup use Bootstrap classes.
+* *Replace a page.* A view with the same path in the application, say `grails-app/views/login/form.gsp`, wins over
+  the plugin's. Keep the form fields (`email`, an optional `context`) and the same targets. A page with passkey buttons
+  needs `<pw:passkeyScript/>` in its head and `<pw:csrfAttrs/>` on the element carrying `data-passkey-scope`; copy the
+  plugin's page as a starting point.
+* *Text.* All text is in message bundles, `passwordless-login.properties` and a Danish
+  `passwordless-login_da.properties`. Override a key in the application's `grails-app/i18n/messages.properties`, or add
+  another language the same way.
+
+The `pw` tag library offers `<pw:appName/>`, `<pw:csrfMeta/>`, `<pw:csrfAttrs/>` and `<pw:passkeyScript/>`.
+
+==== A complete example
+
+`examples/sample` in the repository is a small application that uses the plugin the way an application would: a GORM
+`SampleUser`, a lookup service, a principal and its factory, a session policy, an in-memory link sender, and the security
+chain, with integration specs that run on PostgreSQL with Testcontainers. It is the best reference for how the pieces fit.

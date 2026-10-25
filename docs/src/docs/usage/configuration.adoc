@@ -1,0 +1,36 @@
+[[configuration]]
+=== Configuration
+
+All keys are under `passwordless` in `application.yml`. Durations are ISO-8601 (`PT15M`, `P14D`).
+
+[cols="3,1,3"]
+|===
+| Key | Default | Meaning
+
+| `passwordless.app-name` | `Login` | Shown on the pages and as the passkey relying party's name.
+| `passwordless.async` | `true` | Handle requests for a link on a background thread. Always off in the `test` environment, so tests can assert on the outcome.
+| `passwordless.login.tokenValidity` | `PT15M` | How long a link works.
+| `passwordless.login.successUrl` | `/` | Where a user goes after signing in, unless `loginSuccessRedirect` is replaced.
+| `passwordless.login.rateLimit.window` | `PT1H` | The sliding window for both limits.
+| `passwordless.login.rateLimit.perAccount` | `5` | Links per account in the window. Silent.
+| `passwordless.login.rateLimit.perAddress` | `20` | Requests per remote address in the window. Answered with 429.
+| `passwordless.session.idle` | `P14D` | Idle timeout of the session, unless `sessionPolicy` is replaced.
+| `passwordless.passkeys.rp-id` | host of `grails.serverURL` | Relying party id. Normally leave empty.
+| `passwordless.passkeys.rp-name` | `passwordless.app-name` | Name shown by the browser.
+| `passwordless.passkeys.allowed-origins` | origin of `grails.serverURL` | Comma-separated. Normally leave empty.
+| `passwordless.passkeys.confirmedUrl` | `/` | Where `/account/passkeys/confirm` sends a session that has already confirmed a passkey.
+| `grails.serverURL` | none, required | The address links and the relying party are built from.
+|===
+
+[source,yaml]
+----
+grails:
+  serverURL: https://example.com
+passwordless:
+  app-name: Example
+  login:
+    tokenValidity: PT10M
+    successUrl: /home
+  session:
+    idle: P7D
+----

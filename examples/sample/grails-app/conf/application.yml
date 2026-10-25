@@ -1,0 +1,55 @@
+info:
+  app:
+    name: '@info.app.name@'
+    version: '@info.app.version@'
+    grailsVersion: '@info.app.grailsVersion@'
+grails:
+  profile: web
+  # Login links are built from this, never from the request's Host header.
+  serverURL: http://localhost
+  codegen:
+    defaultPackage: sample
+  views:
+    gsp:
+      encoding: UTF-8
+      codecs:
+        scriptlet: html
+  plugin:
+    databasemigration:
+      updateOnStart: true
+      updateAllOnStart: false
+      updateOnStartFileName: changelog.groovy
+passwordless:
+  app-name: Sample
+  login:
+    tokenValidity: PT15M
+    rateLimit:
+      window: PT1H
+      perAccount: 5
+      perAddress: 20
+  session:
+    idle: P14D
+server:
+  servlet:
+    session:
+      cookie:
+        name: sample
+dataSource:
+  driverClassName: org.postgresql.Driver
+  dbCreate: none
+  pooled: true
+environments:
+  development:
+    dataSource:
+      url: jdbc:postgresql://localhost:5432/sample
+      username: sample
+      password: sample
+  test:
+    dataSource:
+      url: jdbc:tc:postgresql:17-alpine:///sample
+      driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
+hibernate:
+  cache:
+    queries: false
+    use_second_level_cache: false
+    use_query_cache: false

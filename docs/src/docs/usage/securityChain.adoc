@@ -1,0 +1,51 @@
+[[securityChain]]
+=== The security filter chain
+
+The application owns the `SecurityFilterChain`. The plugin contributes two calls that go into it, one before
+`anyRequest()` and one after:
+
+[source,groovy]
+----
+@Configuration
+@EnableWebSecurity
+class SecurityConfiguration {
+
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http, ApplicationContext context) {
+        http.authorizeHttpRequests { auth ->
+            auth.dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR, DispatcherType.INCLUDE).permitAll()
+            PasswordlessSecurity.authorize(auth, context)       // <1>
+            auth.requestMatchers('/admin/**').hasRole('ADMIN')  // <2>
+            auth.anyRequest().authenticated()
+        }
+        PasswordlessSecurity.configure(http, context)           // <3>
+        http.build()
+    }
+}
+----
+<1> Permits the pages anyone must reach before signing in, and guards the passkey registration endpoints.
+<2> The application's own rules. Anything else it wants permitted without a login, such as `/assets/**`, goes here too.
+<3> Wires everything else the plugin needs.
+
+Put this class in `src/main/groovy` of the application. Do not compile it with `@CompileStatic`: the Spring Security
+configurer DSL relies on closure-to-lambda coercion.
+
+`authorize` permits `/login`, `/login/**`, `/webauthn/authenticate/**` and `/passwordless/**` (the login pages, the
+passkey sign-in endpoints and the passkey script), and puts `/webauthn/register/**` behind the rule described in
+<<passkeys>>.
+
+`configure` sets, and the application should not override these on the same chain:
+
+* the `HttpSession`-based security context repository and CSRF token repository;
+* Spring's WebAuthn support, with the plugin's own sign-in success and failure handlers and without Spring's default
+  registration page;
+* an authentication entry point that sends an anonymous user to `/login`;
+* a `NullRequestCache`, so a user is not sent back to an old URL after signing in (see <<context>> for the plugin's
+  own way of choosing a destination);
+* logout: `POST /logout`, then `/login?loggedOut`. CSRF is on, so a logout button is a form with the CSRF token.
+
+Everything else about the chain, such as headers, CORS and other matchers, is yours. An application with more than one
+chain, an API next to the web application say, applies the plugin only to the chain that serves browsers.
+
+CSRF protection is Spring's. A form rendered with `<g:form>` carries the token. A page that posts by script
+reads it from the page; `<pw:csrfMeta/>` in the `<head>` renders it as `_csrf` and `_csrf_header` meta tags.

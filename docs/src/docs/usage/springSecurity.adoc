@@ -1,0 +1,35 @@
+[[springSecurity]]
+=== Plain Spring Security, not the Grails Spring Security plugin
+
+Most Grails applications use `grails-spring-security-core`. It is built around a password `User` / `Role` / `UserRole`
+model, `@Secured` annotations, `springSecurityService` and a `grails.plugin.springsecurity.*` configuration with its
+own filter chain. This plugin uses none of that. It is written against Spring Security 7 directly, and the
+application owns a normal Spring `SecurityFilterChain`.
+
+What that means in practice:
+
+* *Do not install both.* Both would want to build the security filter chain.
+* *There is no `springSecurityService`, no `@Secured`, no `grails.plugin.springsecurity.*` and no `UserRole` domain.*
+  Authorization rules go in the `SecurityFilterChain`, with `authorizeHttpRequests`.
+* *There are no passwords.* No chain accepts one. The plugin declares a `UserDetailsService` only because Spring's
+  WebAuthn support requires one after a passkey checks out; its password is a random value nobody knows.
+* *The application decides what a user is.* The plugin has no user domain class. It asks the application through
+  three small interfaces (<<application>>) and keeps the answer, the _principal_, in the HTTP session.
+* *The current user is read the Spring way:*
++
+[source,groovy]
+----
+import org.springframework.security.core.context.SecurityContextHolder
+
+MyPrincipal principal = (MyPrincipal) SecurityContextHolder.context.authentication.principal
+----
++
+The principal is whatever object the application's `LoginPrincipalFactory` built.
+* *Roles are authorities on the principal.* `hasRole('ADMIN')` in the chain matches a `ROLE_ADMIN` authority returned
+  by `LoginPrincipal.getAuthorities()`.
+* *Sessions, not tokens.* A successful sign-in creates an ordinary HTTP session with Spring's
+  `HttpSessionSecurityContextRepository`. The session id is changed on sign-in against fixation, and CSRF protection
+  is on, using `HttpSessionCsrfTokenRepository`.
+
+If you are moving from `grails-spring-security-core`, the work is to write the chain (<<securityChain>>) and the three
+beans (<<application>>), and to map your existing roles onto the authorities of your principal.

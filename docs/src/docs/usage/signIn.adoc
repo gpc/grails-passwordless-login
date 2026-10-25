@@ -1,0 +1,101 @@
+[[signIn]]
+=== Signing in with a magic link
+
+The plugin serves these URLs:
+
+[cols="2,3"]
+|===
+| `GET /login` | The login form. An email field and a button for a passkey.
+| `POST /login` | Asks for a link. Always redirects to `/login/sent`, whether or not the address is known.
+| `GET /login/sent` | "Check your email".
+| `GET /login/token/{token}` | A confirmation page. Opening a link only shows this page.
+| `POST /login/token` | Spends the token, signs the user in and redirects.
+| `POST /logout` | Spring Security's logout.
+|===
+
+Link a page to `/login` for an anonymous user, with `<g:link controller="login" action="form">`. An unauthenticated
+request for any protected page is sent there.
+
+==== What happens
+
+. The user posts an email address. The address is trimmed and lowercased and passed to `loginAccountLookup`.
+. If it belongs to an account that is under its limit, the plugin creates a random token, stores its hash, and passes
+  the link to `loginLinkSender`. If not, nothing happens and nothing differs in the answer. This is session recovery,
+  not sign-up: it never creates an account.
+. The user opens the link. The page asks them to press a button. This is deliberate: mail scanners and link previews
+  fetch links with `GET`, and a `GET` does not spend the token.
+. The button posts the token. It is accepted once, and only before it expires (`passwordless.login.tokenValidity`,
+  15 minutes). Two simultaneous attempts cannot both succeed.
+. The plugin asks `loginPrincipalFactory` for the principal, changes the session id, issues a new CSRF token,
+  sets the session's idle timeout from `sessionPolicy`, and stores the principal in the session.
+. The user is redirected to the URL `loginSuccessRedirect` returns.
+
+An invalid, used or expired token sends the user back to `/login` with a notice.
+
+==== Rate limits
+
+Two sliding windows, both per `passwordless.login.rateLimit.window`:
+
+* *Per account*, `perAccount` links (default 5). Silent: the user gets the normal answer and no mail, since a visible
+  answer would reveal that the address is known.
+* *Per address*, `perAddress` requests (default 20) from one remote address. Answered with `429` and a "too many
+  requests" page. This says nothing about whether any address is known.
+
+The limits are kept in memory, per application instance. Behind a reverse proxy, make sure
+`request.remoteAddr` is the client's address, for instance with Spring Boot's `server.forward-headers-strategy`, or
+every user counts against the proxy's address.
+
+[[context]]
+==== Context and the destination after sign-in
+
+A request for a link can carry a free-text `context` of up to 100 characters, for example the tenant the user was
+signing in to. Put it in a hidden field on the login form, or a request parameter on `/login?context=acme`: the plugin's
+form passes it on. It is stored with the token, handed to `LoginLinkSender.send(...)` so the link can say where it is
+for, and handed to `LoginSuccessRedirect.urlFor(principal, context)` when the link is spent.
+
+[source,groovy]
+----
+class TenantRedirect implements LoginSuccessRedirect {
+
+    @Override
+    String urlFor(LoginPrincipal principal, String context) {
+        context ? "/t/${URLEncoder.encode(context, 'UTF-8')}/" : '/'
+    }
+}
+
+// resources.groovy
+beans = {
+    loginSuccessRedirect(TenantRedirect)
+}
+----
+
+The result must be a path on the application, starting with a single `/`. Anything else, a full URL or `//host`, is
+replaced with `/`, so a crafted link cannot send a user to another site.
+
+==== Binding a session to something
+
+`SignInService.bind(principal, request, response)` replaces the principal of the current session without a new session
+id. An application that rebinds a session, to another tenant say, builds a new principal and calls it.
+
+==== Session length
+
+The session's idle timeout is `passwordless.session.idle` (ISO-8601, default 14 days). To vary it by user, declare a
+`sessionPolicy` bean:
+
+[source,groovy]
+----
+class MySessionPolicy implements SessionPolicy {
+
+    @Override
+    Duration idleTimeout(LoginPrincipal principal) {
+        ((MyPrincipal) principal).admin ? Duration.ofMinutes(30) : Duration.ofDays(14)
+    }
+}
+
+// resources.groovy
+beans = {
+    sessionPolicy(MySessionPolicy)
+}
+----
+
+Expired tokens are kept for a day and deleted when the next link is issued.
