@@ -2,7 +2,9 @@
 project:
   name: "grails-passwordless-login"
   title: "Grails Passwordless Login plugin"
-  description: "Magic link and passkey sign-in for Grails applications, on plain Spring Security 7. Applications supply who the user is, how a link is delivered and what the session principal holds."
+  description: "Magic link and passkey sign-in for Grails applications, on plain Spring\
+    \ Security 7. Applications supply who the user is, how a link is delivered and\
+    \ what the session principal holds."
   org: "Grails Plugins Collective"
 github:
   org: "gpc"
