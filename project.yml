@@ -14,8 +14,9 @@ license:
 contributors:
   sbglasius: "Søren Berg Glasius"
 versions:
-  current: "1.0.0-RC1"
+  current: "1.0.0"
   previous:
+  - "1.0.0"
   - "1.0.0-RC1"
   ignore:
   - "1.0.x"
