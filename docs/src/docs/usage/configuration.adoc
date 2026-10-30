@@ -9,7 +9,8 @@ All keys are under `passwordless` in `application.yml`. Durations are ISO-8601 (
 
 | `passwordless.app-name` | `Login` | Shown on the pages and as the passkey relying party's name.
 | `passwordless.async` | `true` | Handle requests for a link on a background thread. Always off in the `test` environment, so tests can assert on the outcome.
-| `passwordless.login.tokenValidity` | `PT15M` | How long a link works.
+| `passwordless.login.tokenValidity` | `PT15M` | How long a link works, unless the code that issues it passes its own `validFor` (<<signIn>>).
+| `passwordless.login.confirmation` | `true` | `true`: opening a link shows a confirmation page and its button spends the token. `false`: opening the link signs in at once. See <<signIn>> for the trade-off.
 | `passwordless.login.successUrl` | `/` | Where a user goes after signing in, unless `loginSuccessRedirect` is replaced.
 | `passwordless.login.rateLimit.window` | `PT1H` | The sliding window for both limits.
 | `passwordless.login.rateLimit.perAccount` | `5` | Links per account in the window. Silent.

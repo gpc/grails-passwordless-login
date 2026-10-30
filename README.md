@@ -3,7 +3,8 @@
 Magic link and passkey (WebAuthn) sign-in for Grails 8 applications, on plain Spring Security 7. 
 
 The plugin owns the mechanics: hashed single-use login tokens, a confirmation page that keeps mail scanners from
-spending a link, rate limits, passkey registration and sign-in, the session, and default login and passkey pages
+spending a link (switch it off with `passwordless.login.confirmation: false` and the link signs in directly; a `GET`
+then changes state, a deliberate trade-off, see the docs), a validity per link (`validFor`), rate limits, passkey registration and sign-in, the session, and default login and passkey pages
 (Danish and English). The application supplies who the users are (`LoginAccountLookup`), how a link reaches them
 (`LoginLinkSender`) and what the session principal holds (`LoginPrincipalFactory`). See `docs/src/docs/usage`.
 

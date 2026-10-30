@@ -6,6 +6,9 @@ passwordless:
   async: true
   login:
     tokenValidity: PT15M
+    # true: opening a link shows a confirmation page and the token is spent by its button. false: the link itself
+    # signs in, so a mail scanner or link preview that opens it can use it up.
+    confirmation: true
     successUrl: /
     rateLimit:
       window: PT1H

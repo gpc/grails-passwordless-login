@@ -31,10 +31,13 @@ class MagicLinkService implements GrailsConfigurationAware {
     LinkGenerator grailsLinkGenerator
 
     Duration tokenValidity
+    /** passwordless.login.confirmation: whether opening a link shows a confirmation page rather than signing in. */
+    boolean confirmationRequired = true
 
     @Override
     void setConfiguration(Config config) {
         tokenValidity = Duration.parse(config.getProperty('passwordless.login.tokenValidity', String, 'PT15M'))
+        confirmationRequired = config.getProperty('passwordless.login.confirmation', Boolean, true)
         // Without it the link generator falls back to the request's Host header, which the requester controls, and
         // links are built on a background thread that has no request at all.
         if (!config.getProperty('grails.serverURL', String)) {
@@ -53,12 +56,16 @@ class MagicLinkService implements GrailsConfigurationAware {
     /**
      * Hands the request to a background thread and returns at once, so the response time does not reveal whether
      * the address belongs to anyone.
+     *
+     * @param validFor how long this link works, or null for passwordless.login.tokenValidity. Only for code: never
+     * pass a value taken from a request.
      */
     @NotTransactional
-    void requestLink(String email, String remoteAddress, String context = null) {
+    void requestLink(String email, String remoteAddress, String context = null, Duration validFor = null) {
+        requireValidity(validFor)
         passwordlessExecutor.execute {
             try {
-                issueLink(email, remoteAddress, context)
+                issueLink(email, remoteAddress, context, validFor)
             } catch (Exception e) {
                 log.error('Could not issue a login link', e)
             }
@@ -68,9 +75,13 @@ class MagicLinkService implements GrailsConfigurationAware {
     /**
      * Creates a token and delivers the link, if the address belongs to an account under its limit. Otherwise does
      * nothing: no row, no message.
+     *
+     * @param validFor how long this link works, or null for passwordless.login.tokenValidity
      */
     @Transactional
-    void issueLink(String email, String remoteAddress, String context = null) {
+    void issueLink(String email, String remoteAddress, String context = null, Duration validFor = null) {
+        requireValidity(validFor)
+        Duration validity = validFor ?: tokenValidity
         String normalised = email?.trim()?.toLowerCase(Locale.ROOT)
         LoginAccount account = normalised ? loginAccountLookup.findByEmail(normalised) : null
         if (account == null) {
@@ -87,11 +98,17 @@ class MagicLinkService implements GrailsConfigurationAware {
         LoginToken.executeUpdate('delete from LoginToken t where t.expiresAt < :cutoff', [cutoff: now - TOKEN_RETENTION])
         String token = LoginTokens.generate()
         new LoginToken(accountId: account.id, tokenHash: LoginTokens.hash(token), createdAt: now,
-                expiresAt: now + tokenValidity, requestedFrom: remoteAddress,
+                expiresAt: now + validity, requestedFrom: remoteAddress,
                 context: boundedContext).save(failOnError: true, flush: true)
         URI link = URI.create(grailsLinkGenerator.link(controller: 'login', action: 'confirm', params: [token: token], method: 'GET', absolute: true))
-        loginLinkSender.send(account, link, tokenValidity, boundedContext)
+        loginLinkSender.send(account, link, validity, boundedContext)
         log.info('Login link issued to account {}', account.id)
+    }
+
+    private static void requireValidity(Duration validFor) {
+        if (validFor != null && (validFor.isZero() || validFor.isNegative())) {
+            throw new IllegalArgumentException("validFor must be positive: ${validFor}")
+        }
     }
 
     /**
