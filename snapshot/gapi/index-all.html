@@ -176,6 +176,8 @@ if (location.href.indexOf('is-external=true') == -1) {
 </dt><dd> <div class="block"></div></dd>
 <dt><span class="strong"><a href="grails/plugins/passwordless/PasskeyController.html#confirm()" title="Method in PasskeyController">confirm()</a></span> - Method in <a href="grails/plugins/passwordless/PasskeyController.html">PasskeyController</a>
 </dt><dd> <div class="block">Where an application sends a user whose session has not confirmed a passkey: confirm one, or add the first.</div></dd>
+<dt><span class="strong"><a href="grails/plugins/passwordless/MagicLinkService.html#confirmationRequired" title="Property in MagicLinkService">confirmationRequired</a></span> - Property in <a href="grails/plugins/passwordless/MagicLinkService.html">MagicLinkService</a>
+</dt><dd> <div class="block">passwordless.login.confirmation: whether opening a link shows a confirmation page rather than signing in.</div></dd>
 <dt><span class="strong"><a href="grails/plugins/passwordless/LoginToken.html#constraints" title="Property in LoginToken">constraints</a></span> - Property in <a href="grails/plugins/passwordless/LoginToken.html">LoginToken</a>
 </dt><dd> <div class="block"></div></dd>
 <dt><span class="strong"><a href="grails/plugins/passwordless/LoginToken.html#context" title="Property in LoginToken">context</a></span> - Property in <a href="grails/plugins/passwordless/LoginToken.html">LoginToken</a>
@@ -309,7 +311,7 @@ if (location.href.indexOf('is-external=true') == -1) {
 </dt><dd> <div class="block"></div></dd>
 <dt><span class="strong"><a href="grails/plugins/passwordless/LoginPrincipal.html#isPasskeyVerified()" title="Method in LoginPrincipal">isPasskeyVerified()</a></span> - Method in <a href="grails/plugins/passwordless/LoginPrincipal.html">LoginPrincipal</a>
 </dt><dd> <div class="block">Whether a passkey was used in this session, to sign in or to confirm.</div></dd>
-<dt><span class="strong"><a href="grails/plugins/passwordless/MagicLinkService.html#issueLink(java.lang.String, java.lang.String, java.lang.String)" title="Method in MagicLinkService">issueLink(java.lang.String, java.lang.String, java.lang.String)</a></span> - Method in <a href="grails/plugins/passwordless/MagicLinkService.html">MagicLinkService</a>
+<dt><span class="strong"><a href="grails/plugins/passwordless/MagicLinkService.html#issueLink(java.lang.String, java.lang.String, java.lang.String, java.time.Duration)" title="Method in MagicLinkService">issueLink(java.lang.String, java.lang.String, java.lang.String, java.time.Duration)</a></span> - Method in <a href="grails/plugins/passwordless/MagicLinkService.html">MagicLinkService</a>
 </dt><dd> <div class="block">Creates a token and delivers the link, if the address belongs to an account under its limit. </div></dd>
 <dt><span class="strong"><a href="grails/plugins/passwordless/PasswordlessLoginGrailsPlugin.html#issueManagement" title="Property in PasswordlessLoginGrailsPlugin">issueManagement</a></span> - Property in <a href="grails/plugins/passwordless/PasswordlessLoginGrailsPlugin.html">PasswordlessLoginGrailsPlugin</a>
 </dt><dd> <div class="block"></div></dd>
@@ -538,7 +540,7 @@ if (location.href.indexOf('is-external=true') == -1) {
 </dt><dd> <div class="block"></div></dd>
 <dt><span class="strong"><a href="grails/plugins/passwordless/LoginToken.html#requestedFrom" title="Property in LoginToken">requestedFrom</a></span> - Property in <a href="grails/plugins/passwordless/LoginToken.html">LoginToken</a>
 </dt><dd> <div class="block"></div></dd>
-<dt><span class="strong"><a href="grails/plugins/passwordless/MagicLinkService.html#requestLink(java.lang.String, java.lang.String, java.lang.String)" title="Method in MagicLinkService">requestLink(java.lang.String, java.lang.String, java.lang.String)</a></span> - Method in <a href="grails/plugins/passwordless/MagicLinkService.html">MagicLinkService</a>
+<dt><span class="strong"><a href="grails/plugins/passwordless/MagicLinkService.html#requestLink(java.lang.String, java.lang.String, java.lang.String, java.time.Duration)" title="Method in MagicLinkService">requestLink(java.lang.String, java.lang.String, java.lang.String, java.time.Duration)</a></span> - Method in <a href="grails/plugins/passwordless/MagicLinkService.html">MagicLinkService</a>
 </dt><dd> <div class="block">Hands the request to a background thread and returns at once, so the response time does not reveal whether
  the address belongs to anyone.</div></dd>
 <dt><span class="strong"><a href="grails/plugins/passwordless/security/RateLimiter.html#reset()" title="Method in RateLimiter">reset()</a></span> - Method in <a href="grails/plugins/passwordless/security/RateLimiter.html">RateLimiter</a>

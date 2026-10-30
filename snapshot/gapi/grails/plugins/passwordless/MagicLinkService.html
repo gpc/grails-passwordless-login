@@ -153,36 +153,41 @@ implements <a href='../../../grails.core.support.GrailsConfigurationAware.html'>
                         </tr>
                         
                         <tr class="altColor">
+                            <td class="colFirst"><code><strong>boolean</strong></code>&nbsp;</td>
+                            <td class="colLast"><code><a href="#confirmationRequired">confirmationRequired</a></code><br>passwordless.login.confirmation: whether opening a link shows a confirmation page rather than signing in.</td>
+                        </tr>
+                        
+                        <tr class="rowColor">
                             <td class="colFirst"><code><strong><a href='../../../grails.web.mapping.LinkGenerator.html'>LinkGenerator</a></strong></code>&nbsp;</td>
                             <td class="colLast"><code><a href="#grailsLinkGenerator">grailsLinkGenerator</a></code><br></td>
                         </tr>
                         
-                        <tr class="rowColor">
+                        <tr class="altColor">
                             <td class="colFirst"><code><strong><a href='../../../grails/plugins/passwordless/LoginAccountLookup.html'>LoginAccountLookup</a></strong></code>&nbsp;</td>
                             <td class="colLast"><code><a href="#loginAccountLookup">loginAccountLookup</a></code><br></td>
                         </tr>
                         
-                        <tr class="altColor">
+                        <tr class="rowColor">
                             <td class="colFirst"><code><strong><a href='../../../grails/plugins/passwordless/LoginLinkSender.html'>LoginLinkSender</a></strong></code>&nbsp;</td>
                             <td class="colLast"><code><a href="#loginLinkSender">loginLinkSender</a></code><br></td>
                         </tr>
                         
-                        <tr class="rowColor">
+                        <tr class="altColor">
                             <td class="colFirst"><code><strong><a href='../../../org.springframework.core.task.TaskExecutor.html'>TaskExecutor</a></strong></code>&nbsp;</td>
                             <td class="colLast"><code><a href="#passwordlessExecutor">passwordlessExecutor</a></code><br></td>
                         </tr>
                         
-                        <tr class="altColor">
+                        <tr class="rowColor">
                             <td class="colFirst"><code><strong><a href='../../../grails/plugins/passwordless/security/RateLimiter.html'>RateLimiter</a></strong></code>&nbsp;</td>
                             <td class="colLast"><code><a href="#passwordlessRateLimiterPerAccount">passwordlessRateLimiterPerAccount</a></code><br></td>
                         </tr>
                         
-                        <tr class="rowColor">
+                        <tr class="altColor">
                             <td class="colFirst"><code><strong><a href='../../../grails/plugins/passwordless/security/RateLimiter.html'>RateLimiter</a></strong></code>&nbsp;</td>
                             <td class="colLast"><code><a href="#passwordlessRateLimiterPerAddress">passwordlessRateLimiterPerAddress</a></code><br></td>
                         </tr>
                         
-                        <tr class="altColor">
+                        <tr class="rowColor">
                             <td class="colFirst"><code><strong>java.time.Duration</strong></code>&nbsp;</td>
                             <td class="colLast"><code><a href="#tokenValidity">tokenValidity</a></code><br></td>
                         </tr>
@@ -244,7 +249,7 @@ implements <a href='../../../grails.core.support.GrailsConfigurationAware.html'>
                         <tr class="rowColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>void</code></td>
-                            <td class="colLast"><code><strong><a href="#issueLink(java.lang.String, java.lang.String, java.lang.String)">issueLink</a></strong>(java.lang.String email, java.lang.String remoteAddress, java.lang.String context)</code><br>Creates a token and delivers the link, if the address belongs to an account under its limit. </td>
+                            <td class="colLast"><code><strong><a href="#issueLink(java.lang.String, java.lang.String, java.lang.String, java.time.Duration)">issueLink</a></strong>(java.lang.String email, java.lang.String remoteAddress, java.lang.String context, java.time.Duration validFor)</code><br>Creates a token and delivers the link, if the address belongs to an account under its limit. </td>
                         </tr>
                         
                         <tr class="altColor">
@@ -262,7 +267,7 @@ implements <a href='../../../grails.core.support.GrailsConfigurationAware.html'>
                         <tr class="altColor">
                             <td class="colFirst"><code></code></td>
                             <td class="colLast"><code>void</code></td>
-                            <td class="colLast"><code><strong><a href="#requestLink(java.lang.String, java.lang.String, java.lang.String)">requestLink</a></strong>(java.lang.String email, java.lang.String remoteAddress, java.lang.String context)</code><br>Hands the request to a background thread and returns at once, so the response time does not reveal whether
+                            <td class="colLast"><code><strong><a href="#requestLink(java.lang.String, java.lang.String, java.lang.String, java.time.Duration)">requestLink</a></strong>(java.lang.String email, java.lang.String remoteAddress, java.lang.String context, java.time.Duration validFor)</code><br>Hands the request to a background thread and returns at once, so the response time does not reveal whether
  the address belongs to anyone.</td>
                         </tr>
                         
@@ -328,6 +333,14 @@ implements <a href='../../../grails.core.support.GrailsConfigurationAware.html'>
                             <li class="blockList">
                                 <h4>static&nbsp;final&nbsp;java.time.Duration <strong>TOKEN_RETENTION</strong></h4>
                                 <p></p>
+                            </li>
+                        </ul>
+                    
+                        <a name="confirmationRequired"><!-- --></a>
+                        <ul class="blockListLast">
+                            <li class="blockList">
+                                <h4>boolean <strong>confirmationRequired</strong></h4>
+                                <p>passwordless.login.confirmation: whether opening a link shows a confirmation page rather than signing in.</p>
                             </li>
                         </ul>
                     
@@ -430,12 +443,12 @@ implements <a href='../../../grails.core.support.GrailsConfigurationAware.html'>
                             </li>
                         </ul>
                     
-                        <a name="issueLink(java.lang.String, java.lang.String, java.lang.String)"><!-- --></a>
+                        <a name="issueLink(java.lang.String, java.lang.String, java.lang.String, java.time.Duration)"><!-- --></a>
                         <ul class="blockListLast">
                             <li class="blockList">
-                                <h4>@grails.gorm.transactions.Transactional<br>void <strong>issueLink</strong>(java.lang.String email, java.lang.String remoteAddress, java.lang.String context)</h4>
+                                <h4>@grails.gorm.transactions.Transactional<br>void <strong>issueLink</strong>(java.lang.String email, java.lang.String remoteAddress, java.lang.String context, java.time.Duration validFor)</h4>
                                 <p> Creates a token and delivers the link, if the address belongs to an account under its limit. Otherwise does
- nothing: no row, no message.</p>
+ nothing: no row, no message. <DL><DT><B>Parameters:</B></DT><DD><code>validFor</code> -  how long this link works, or null for passwordless.login.tokenValidity</DD></DL></p>
                             </li>
                         </ul>
                     
@@ -456,12 +469,13 @@ implements <a href='../../../grails.core.support.GrailsConfigurationAware.html'>
                             </li>
                         </ul>
                     
-                        <a name="requestLink(java.lang.String, java.lang.String, java.lang.String)"><!-- --></a>
+                        <a name="requestLink(java.lang.String, java.lang.String, java.lang.String, java.time.Duration)"><!-- --></a>
                         <ul class="blockListLast">
                             <li class="blockList">
-                                <h4>@grails.gorm.transactions.NotTransactional<br>void <strong>requestLink</strong>(java.lang.String email, java.lang.String remoteAddress, java.lang.String context)</h4>
+                                <h4>@grails.gorm.transactions.NotTransactional<br>void <strong>requestLink</strong>(java.lang.String email, java.lang.String remoteAddress, java.lang.String context, java.time.Duration validFor)</h4>
                                 <p> Hands the request to a background thread and returns at once, so the response time does not reveal whether
- the address belongs to anyone.</p>
+ the address belongs to anyone. <DL><DT><B>Parameters:</B></DT><DD><code>validFor</code> -  how long this link works, or null for passwordless.login.tokenValidity. Only for code: never
+ pass a value taken from a request.</DD></DL></p>
                             </li>
                         </ul>
                     

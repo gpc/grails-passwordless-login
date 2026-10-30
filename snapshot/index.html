@@ -977,7 +977,7 @@ Its last path segment is the token. Do not log it, and do not store it: whoever 
 or expires.</p>
 </li>
 <li>
-<p><code>validFor</code>: how long the link works, <code>passwordless.login.tokenValidity</code>.</p>
+<p><code>validFor</code>: how long the link works, <code>passwordless.login.tokenValidity</code>, or the <code>validFor</code> the code that requested the link passed (<a href="#signIn">Signing in with a magic link</a>).</p>
 </li>
 <li>
 <p><code>context</code>: the optional value the application attached when login started (<a href="#context">Context and the destination after sign-in</a>), or <code>null</code>.</p>
@@ -1166,7 +1166,7 @@ reads it from the page; <code>&lt;pw:csrfMeta/&gt;</code> in the <code>&lt;head&
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>GET /login/token/{token}</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">A confirmation page. Opening a link only shows this page.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A confirmation page. Opening a link only shows this page, unless <code>passwordless.login.confirmation</code> is <code>false</code>, when it signs in and redirects like <code>POST /login/token</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>POST /login/token</code></p></td>
@@ -1236,6 +1236,38 @@ requests" page. This says nothing about whether any address is known.</p>
 <p>The limits are kept in memory, per application instance. Behind a reverse proxy, make sure
 <code>request.remoteAddr</code> is the client&#8217;s address, for instance with Spring Boot&#8217;s <code>server.forward-headers-strategy</code>, or
 every user counts against the proxy&#8217;s address.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="links-without-the-confirmation-page">Links without the confirmation page</h4>
+<div class="paragraph">
+<p>With <code>passwordless.login.confirmation: false</code> the link itself signs the user in: <code>GET /login/token/{token}</code> spends
+the token, signs in and redirects, the same as <code>POST /login/token</code>, with no page between. The answer carries
+<code>Cache-Control: no-store</code>. An invalid, used or expired token still goes to <code>/login?invalid=true</code>.</p>
+</div>
+<div class="paragraph">
+<p>This is a deliberate trade-off, since a <code>GET</code> that changes state is what the confirmation page exists to avoid. A mail
+scanner or link preview that opens the link first spends it, and the user, who opens it afterwards, is told it is
+invalid (and the scanner&#8217;s request, not the user&#8217;s, holds the session). Turn it off when the one-click experience matters
+more, for example for invitations, and combine it with a short <code>validFor</code> or a sender that is not scanned. The
+default is <code>true</code>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="a-validity-per-link">A validity per link</h4>
+<div class="paragraph">
+<p><code>passwordless.login.tokenValidity</code> is the default. Code that issues a link can give one its own validity, for
+example an invitation that works for days:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="groovy">magicLinkService.requestLink(email, remoteAddress, context, <span class="predefined-type">Duration</span>.ofDays(<span class="integer">7</span>))
+magicLinkService.issueLink(email, remoteAddress, context, <span class="predefined-type">Duration</span>.ofDays(<span class="integer">7</span>))   <span class="comment">// in the calling thread</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>validFor</code> is optional (<code>null</code> means the configured default), must be positive, and is the <code>validFor</code> that
+<code>LoginLinkSender.send</code> receives. It cannot be set from a request: <code>POST /login</code> always uses the default.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1459,7 +1491,12 @@ with two, Spring Security&#8217;s WebAuthn configuration ignores both.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>passwordless.login.tokenValidity</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>PT15M</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">How long a link works.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">How long a link works, unless the code that issues it passes its own <code>validFor</code> (<a href="#signIn">Signing in with a magic link</a>).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>passwordless.login.confirmation</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code>: opening a link shows a confirmation page and its button spends the token. <code>false</code>: opening the link signs in at once. See <a href="#signIn">Signing in with a magic link</a> for the trade-off.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>passwordless.login.successUrl</code></p></td>
@@ -1582,7 +1619,7 @@ chain, with integration specs that run on PostgreSQL with Testcontainers. It is 
 <div id="footer">
 <div id="footer-text">
 Version 1.0.0-SNAPSHOT<br>
-Last updated 2026-10-27 21:52:05 UTC
+Last updated 2026-10-30 15:33:17 UTC
 </div>
 </div>
 </body>

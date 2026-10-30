@@ -105,7 +105,8 @@ if (location.href.indexOf('is-external=true') == -1) {
 extends java.lang.Object</pre>
 
     <p> Magic link sign-in. Opening a link only shows a confirmation page; the token is spent by the POST from that page,
- so a mail scanner that prefetches links cannot use it up.</p>
+ so a mail scanner that prefetches links cannot use it up. With passwordless.login.confirmation: false the link
+ itself signs in, without the page.</p>
 
           </li>
     </ul>
