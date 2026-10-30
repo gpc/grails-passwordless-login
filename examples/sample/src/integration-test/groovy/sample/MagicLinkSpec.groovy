@@ -40,6 +40,7 @@ class MagicLinkSpec extends Specification {
     }
 
     void cleanup() {
+        magicLinkService.confirmationRequired = true
         SecurityContextHolder.clearContext()
     }
 
@@ -175,6 +176,73 @@ class MagicLinkSpec extends Specification {
         then:
         again.statusCode() == 302
         again.headers().firstValue('Location').get() == '/login?invalid=true'
+    }
+
+    void "a link can have its own validity, and the default is the configured one"() {
+        given:
+        Long invited = Seed.user('Inviteret Ida')
+        Long ordinary = Seed.user('Almindelig Alma')
+
+        when:
+        magicLinkService.requestLink(Seed.emailOf(invited), '203.0.113.5', null, Duration.ofDays(7))
+        magicLinkService.requestLink(Seed.emailOf(ordinary), '203.0.113.5')
+
+        then:
+        linkInbox.to(Seed.emailOf(invited)).first().validFor == Duration.ofDays(7)
+        Duration.between(tokensOf(invited).first().createdAt, tokensOf(invited).first().expiresAt) == Duration.ofDays(7)
+        linkInbox.to(Seed.emailOf(ordinary)).first().validFor == Duration.ofMinutes(15)
+    }
+
+    void "a validity that is not positive is refused"() {
+        when:
+        magicLinkService.requestLink(Seed.emailOf(Seed.user('Nul Nanna')), '203.0.113.5', null, validFor)
+
+        then:
+        thrown(IllegalArgumentException)
+
+        where:
+        validFor << [Duration.ZERO, Duration.ofMinutes(-1)]
+    }
+
+    void "with confirmation off, opening the link signs in without a page"() {
+        given:
+        magicLinkService.confirmationRequired = false
+        Long userId = Seed.user('Direkte Dorthe')
+        String token = requestToken(userId)
+        WebClient web = new WebClient(serverPort)
+
+        when:
+        HttpResponse<String> opened = web.get("/login/token/${token}")
+
+        then:
+        opened.statusCode() == 302
+        URI.create(opened.headers().firstValue('Location').get()).path == '/'
+        opened.headers().firstValue('Cache-Control').get().contains('no-store')
+        web.get('/').body().contains('Hello Direkte Dorthe')
+        tokensOf(userId).first().usedAt != null
+
+        when: 'the link is used a second time'
+        HttpResponse<String> again = new WebClient(serverPort).get("/login/token/${token}")
+
+        then:
+        again.statusCode() == 302
+        again.headers().firstValue('Location').get() == '/login?invalid=true'
+    }
+
+    void "with confirmation off, an expired link goes back to the form"() {
+        given:
+        magicLinkService.confirmationRequired = false
+        Long userId = Seed.user('Udloebet Ulla')
+        String token = LoginTokens.generate()
+        insertToken(userId, token, Instant.now() - Duration.ofMinutes(20), Instant.now() - Duration.ofMinutes(5))
+
+        when:
+        HttpResponse<String> opened = new WebClient(serverPort).get("/login/token/${token}")
+
+        then:
+        opened.statusCode() == 302
+        opened.headers().firstValue('Location').get() == '/login?invalid=true'
+        tokensOf(userId).first().usedAt == null
     }
 
     void "a malformed token in the address goes back to the login page"() {

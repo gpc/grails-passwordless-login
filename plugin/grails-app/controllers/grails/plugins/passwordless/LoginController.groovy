@@ -5,7 +5,8 @@ import grails.plugins.passwordless.security.LoginTokens
 
 /**
  * Magic link sign-in. Opening a link only shows a confirmation page; the token is spent by the POST from that page,
- * so a mail scanner that prefetches links cannot use it up.
+ * so a mail scanner that prefetches links cannot use it up. With passwordless.login.confirmation: false the link
+ * itself signs in, without the page.
  */
 class LoginController {
 
@@ -40,10 +41,18 @@ class LoginController {
             redirect controller: 'login', action: 'form', method: 'GET', params: [invalid: true], absolute: false
             return
         }
+        if (!magicLinkService.confirmationRequired) {
+            signInWith(token)
+            return
+        }
         [token: token]
     }
 
     def redeem(String token) {
+        signInWith(token)
+    }
+
+    private void signInWith(String token) {
         RedeemedLogin login = magicLinkService.redeem(token)
         if (login == null) {
             redirect controller: 'login', action: 'form', method: 'GET', params: [invalid: true], absolute: false

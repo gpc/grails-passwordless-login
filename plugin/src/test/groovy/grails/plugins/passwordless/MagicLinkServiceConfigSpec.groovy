@@ -42,4 +42,26 @@ class MagicLinkServiceConfigSpec extends Specification {
         then:
         service.tokenValidity == Duration.ofMinutes(15)
     }
+
+    void "confirmation is required unless switched off: #setting"() {
+        given:
+        MagicLinkService service = new MagicLinkService()
+        Map settings = ['grails.serverURL': 'https://app.example']
+        if (setting != null) {
+            settings['passwordless.login.confirmation'] = setting
+        }
+
+        when:
+        service.setConfiguration(new PropertySourcesConfig(settings))
+
+        then:
+        service.confirmationRequired == expected
+
+        where:
+        setting | expected
+        null    | true
+        true    | true
+        false   | false
+        'false' | false
+    }
 }

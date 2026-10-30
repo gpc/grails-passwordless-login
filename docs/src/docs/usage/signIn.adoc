@@ -8,7 +8,7 @@ The plugin serves these URLs:
 | `GET /login` | The login form. An email field and a button for a passkey.
 | `POST /login` | Asks for a link. Always redirects to `/login/sent`, whether or not the address is known.
 | `GET /login/sent` | "Check your email".
-| `GET /login/token/{token}` | A confirmation page. Opening a link only shows this page.
+| `GET /login/token/{token}` | A confirmation page. Opening a link only shows this page, unless `passwordless.login.confirmation` is `false`, when it signs in and redirects like `POST /login/token`.
 | `POST /login/token` | Spends the token, signs the user in and redirects.
 | `POST /logout` | Spring Security's logout.
 |===
@@ -44,6 +44,32 @@ Two sliding windows, both per `passwordless.login.rateLimit.window`:
 The limits are kept in memory, per application instance. Behind a reverse proxy, make sure
 `request.remoteAddr` is the client's address, for instance with Spring Boot's `server.forward-headers-strategy`, or
 every user counts against the proxy's address.
+
+==== Links without the confirmation page
+
+With `passwordless.login.confirmation: false` the link itself signs the user in: `GET /login/token/{token}` spends
+the token, signs in and redirects, the same as `POST /login/token`, with no page between. The answer carries
+`Cache-Control: no-store`. An invalid, used or expired token still goes to `/login?invalid=true`.
+
+This is a deliberate trade-off, since a `GET` that changes state is what the confirmation page exists to avoid. A mail
+scanner or link preview that opens the link first spends it, and the user, who opens it afterwards, is told it is
+invalid (and the scanner's request, not the user's, holds the session). Turn it off when the one-click experience matters
+more, for example for invitations, and combine it with a short `validFor` or a sender that is not scanned. The
+default is `true`.
+
+==== A validity per link
+
+`passwordless.login.tokenValidity` is the default. Code that issues a link can give one its own validity, for
+example an invitation that works for days:
+
+[source,groovy]
+----
+magicLinkService.requestLink(email, remoteAddress, context, Duration.ofDays(7))
+magicLinkService.issueLink(email, remoteAddress, context, Duration.ofDays(7))   // in the calling thread
+----
+
+`validFor` is optional (`null` means the configured default), must be positive, and is the `validFor` that
+`LoginLinkSender.send` receives. It cannot be set from a request: `POST /login` always uses the default.
 
 [[context]]
 ==== Context and the destination after sign-in

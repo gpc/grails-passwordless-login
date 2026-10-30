@@ -85,7 +85,7 @@ whatever sends a message from ordinary code works here.
 * `link`: a complete, absolute `URI`, built from `grails.serverURL` (<<serverUrl>>). Put it in the mail as it is.
   Its last path segment is the token. Do not log it, and do not store it: whoever holds it can sign in until it is used
   or expires.
-* `validFor`: how long the link works, `passwordless.login.tokenValidity`.
+* `validFor`: how long the link works, `passwordless.login.tokenValidity`, or the `validFor` the code that requested the link passed (<<signIn>>).
 * `context`: the optional value the application attached when login started (<<context>>), or `null`.
 
 ==== How it runs
